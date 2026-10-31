@@ -1,0 +1,6 @@
+build/
+DerivedData/
+ios/Frameworks/
+*.xcarchive
+*.xcresult
+.DS_Store

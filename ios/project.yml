@@ -1,0 +1,57 @@
+name: StrataChat
+options:
+  bundleIdPrefix: com.noir
+  deploymentTarget:
+    iOS: "17.0"
+  xcodeVersion: "16.0"
+
+settings:
+  base:
+    IPHONEOS_DEPLOYMENT_TARGET: "17.0"
+    SWIFT_VERSION: "5.9"
+    DEVELOPMENT_TEAM: ""
+    CODE_SIGN_STYLE: Manual
+    CODE_SIGNING_REQUIRED: NO
+    CODE_SIGNING_ALLOWED: NO
+    TARGETED_DEVICE_FAMILY: "1"
+    ENABLE_BITCODE: NO
+
+targets:
+  StrataChat:
+    type: application
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: StrataChat
+    dependencies:
+      - framework: Frameworks/llama.xcframework
+        embed: true
+      - sdk: Metal.framework
+      - sdk: MetalKit.framework
+      - sdk: Accelerate.framework
+      - sdk: QuickLook.framework
+      - sdk: PDFKit.framework
+      - sdk: CoreML.framework
+      - sdk: UserNotifications.framework
+      - sdk: BackgroundTasks.framework
+    settings:
+      base:
+        PRODUCT_NAME: StrataChat
+        PRODUCT_BUNDLE_IDENTIFIER: com.noir.stratachat
+        INFOPLIST_FILE: StrataChat/App/Info.plist
+        CODE_SIGN_ENTITLEMENTS: StrataChat/App/StrataChat.entitlements
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        GENERATE_INFOPLIST_FILE: NO
+        SWIFT_OPTIMIZATION_LEVEL: "-O"
+        SWIFT_OBJC_INTEROP_MODE: "objcxx"
+        SWIFT_OBJC_BRIDGING_HEADER: StrataChat/App/StrataChat-Bridging-Header.h
+        CLANG_CXX_LANGUAGE_STANDARD: "c++17"
+        CLANG_CXX_LIBRARY: "libc++"
+        HEADER_SEARCH_PATHS:
+          - "$(inherited)"
+          - "$(SRCROOT)/StrataChat/Services/OpenBMB"
+          - "$(SRCROOT)/Frameworks/llama.xcframework/ios-arm64/llama.framework/Headers"
+        FRAMEWORK_SEARCH_PATHS:
+          - "$(inherited)"
+          - "$(SRCROOT)/Frameworks"
+          - "$(SRCROOT)/Frameworks/llama.xcframework/ios-arm64"

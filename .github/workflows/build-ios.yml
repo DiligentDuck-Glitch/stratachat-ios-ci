@@ -1,0 +1,94 @@
+name: Build iOS IPA
+
+on:
+  push:
+    branches: [ main, master ]
+    # macOS runners bill at 10x, so only push the ones that actually need an IPA.
+    # Backend, docs and committed builds never produce one; dispatch the workflow by hand
+    # if a build is ever needed without an iOS change.
+    paths-ignore:
+      - 'backend/**'
+      - 'docs/**'
+      - 'builds/**'
+      - 'data/**'
+      - '**.md'
+      - '.gitignore'
+  workflow_dispatch:
+
+concurrency:
+  group: build-ios-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build Native iOS App
+    runs-on: macos-15
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: 'latest-stable'
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Cache OpenBMB llama.xcframework
+        id: cache-llama
+        uses: actions/cache@v4
+        with:
+          path: ios/Frameworks/llama.xcframework
+          key: openbmb-llama-xcframework-v2-ios-arm64
+
+      - name: Build OpenBMB llama.xcframework
+        if: steps.cache-llama.outputs.cache-hit != 'true'
+        run: |
+          echo "Cloning OpenBMB/MiniCPM-V-Apps with shallow submodules..."
+          git clone --recurse-submodules --shallow-submodules --depth 1 https://github.com/OpenBMB/MiniCPM-V-Apps.git /tmp/MiniCPM-V-Apps
+          cd /tmp/MiniCPM-V-Apps
+          chmod +x ./scripts/build_xcframework.sh
+          MINIMAL_MODE=ios-device ./scripts/build_xcframework.sh
+          mkdir -p "$GITHUB_WORKSPACE/ios/Frameworks"
+          cp -R MiniCPM-V-demo/thirdparty/llama.xcframework "$GITHUB_WORKSPACE/ios/Frameworks/"
+
+      - name: Sanitize and Verify llama.xcframework
+        run: |
+          # Remove unused voxcpm2 headers containing unguarded C++ includes to ensure clean module import
+          rm -f ios/Frameworks/llama.xcframework/ios-arm64/llama.framework/Headers/voxcpm2*
+          ls -la ios/Frameworks/llama.xcframework
+
+      - name: Generate Xcode Project
+        run: |
+          cd ios
+          xcodegen generate
+
+      - name: Build and Archive
+        run: |
+          cd ios
+          xcodebuild archive \
+            -project StrataChat.xcodeproj \
+            -scheme StrataChat \
+            -destination "generic/platform=iOS" \
+            -archivePath build/StrataChat.xcarchive \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            AD_HOC_CODE_SIGNING_ALLOWED=YES
+
+      - name: Package IPA
+        run: |
+          cd ios
+          mkdir -p build/Payload
+          cp -r build/StrataChat.xcarchive/Products/Applications/StrataChat.app build/Payload/
+          cd build
+          zip -qr StrataChat.ipa Payload
+          ls -lh StrataChat.ipa
+
+      - name: Upload IPA Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: StrataChat-iOS-IPA
+          path: ios/build/StrataChat.ipa
+          retention-days: 14
